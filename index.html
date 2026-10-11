@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>桃南 280</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <header class="top">
@@ -27,8 +27,10 @@
             <button data-color="grade">坡度</button>
             <button data-color="segment">分段</button>
           </div>
-          <button id="headingBtn" class="map-btn" type="button">🧭 前進方向朝上</button>
-          <div id="legend" class="legend"></div>
+          <details id="legendBox" class="legend">
+            <summary>圖例</summary>
+            <div id="legend"></div>
+          </details>
         </div>
       </div>
 

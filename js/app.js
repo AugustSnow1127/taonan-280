@@ -242,6 +242,7 @@
     });
     state.map = map;
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
+    map.addControl(headingControl(), 'top-right');
     map.on('load', function () {
       map.addSource('dem', {
         type: 'raster-dem',
@@ -400,6 +401,20 @@
   }
   // Put the rider in the lower part of the map so more road ahead is visible.
   function aheadOffset() { return [0, Math.round(state.map.getContainer().clientHeight * 0.25)]; }
+  // Icon-only map control under the zoom buttons.
+  function headingControl() {
+    return {
+      onAdd: function () {
+        var box = document.createElement('div');
+        box.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+        box.innerHTML = '<button id="headingBtn" class="heading-ctrl" type="button" title="前進方向朝上" aria-label="前進方向朝上">' +
+          '<svg viewBox="0 0 24 24"><path d="M12 2l7 19-7-4-7 4z" fill="#1f6feb"/></svg></button>';
+        box.firstChild.addEventListener('click', toggleHeading);
+        return box;
+      },
+      onRemove: function () {}
+    };
+  }
   function toggleHeading() {
     state.headingUp = !state.headingUp;
     document.getElementById('headingBtn').classList.toggle('active', state.headingUp);
@@ -628,7 +643,6 @@
   });
   ['pace', 'startTime'].forEach(function (id) { document.getElementById(id).addEventListener('input', update); });
   document.getElementById('locBtn').addEventListener('click', locateOnce);
-  document.getElementById('headingBtn').addEventListener('click', toggleHeading);
   document.getElementById('trackToggle').addEventListener('change', function (e) { setTracking(e.target.checked); });
   document.getElementById('copyBtn').addEventListener('click', copyReport);
   document.getElementById('manualBtn').addEventListener('click', function () {
@@ -639,6 +653,7 @@
   });
 
   renderPrep();
+  if (window.innerWidth >= 900) document.getElementById('legendBox').open = true;
   Promise.all([fetch('data/route.json').then(function (r) { return r.json(); }), fetch('data/stops.json').then(function (r) { return r.json(); })])
     .then(function (res) {
       state.route = res[0];
