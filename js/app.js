@@ -3,7 +3,7 @@
 
   var P = window.PLAN;
   var C = P.colors;
-  var state = { route: null, stops: null, colorMode: 'strategy', schedule: null, map: null, mapReady: false, wind: null, me: null, watchId: null, wakeLock: null, reportText: '', headingUp: false };
+  var state = { route: null, stops: null, colorMode: 'strategy', schedule: null, map: null, mapReady: false, wind: null, me: null, watchId: null, wakeLock: null, reportText: '', headingUp: false, pois: [], brands: {}, poiReady: false };
 
   // ---------- helpers ----------
   function hm(str) { var p = str.split(':'); return (+p[0]) * 60 + (+p[1]); }
@@ -290,6 +290,7 @@
       state.mapReady = true;
       var attrib = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
       if (attrib) attrib.classList.remove('maplibregl-compact-show');
+      initPoiLayers();
       if (state.me) drawMe(true);
     });
   }
@@ -437,6 +438,7 @@
   function setPosition(km, lonlat, offM, fly, src, at) {
     state.me = { km: km, lonlat: lonlat, offM: offM, src: src || 'gps', at: at === undefined ? nowMinutes() : at };
     renderReport();
+    refreshPois();
     drawMe(fly);
   }
   function drawMe(fly) {
@@ -534,44 +536,165 @@
     return { text: lines.join('\n'), html: html };
   }
 
-  // Nearest place to rest ahead (planned stop or optional rest area) + the next planned stop.
-  function renderBanner() {
-    var el = document.getElementById('nextBanner');
-    if (!state.me || !state.schedule) { el.hidden = true; return; }
-    var me = state.me, now = me.at, planHere = etaAtKm(me.km);
-    var ahead = state.stops.filter(function (s) { return s.km > me.km + 0.3; });
-    if (!ahead.length) { el.hidden = true; return; }
-    var nearest = ahead[0];
-    var planned = nextStops(me.km)[0];
-    function etaOf(s) {   // arrival time (not departure) at stop s
-      var row = state.schedule.rows.filter(function (r) { return r.stop.id === s.id; })[0];
-      return now + ((row ? row.arrive : etaAtKm(s.km)) - planHere);
-    }
-    function mins(s) { return Math.max(0, Math.round(etaOf(s) - now)); }
-    var html = '<div class="nb-main">下一站 ' + esc(nameOf(nearest)) + ' · <b>' + (nearest.km - me.km).toFixed(1) + ' km</b> · 約 ' + mins(nearest) + ' 分 ›</div>';
-    var sub = [];
-    if (nearest.type === 'rest') sub.push('非計畫停站');
-    if (planned && planned.id !== nearest.id) sub.push('計畫停站 ' + nameOf(planned) + ' ' + (planned.km - me.km).toFixed(0) + ' km，' + fmt(etaOf(planned)) + ' 到');
-    else if (planned) sub.push(fmt(etaOf(planned)) + ' 到' + (planned.cutoff ? '，關門 ' + planned.cutoff : ''));
-    html += '<div class="nb-sub">' + esc(sub.join('｜')) + '</div>';
-    el.innerHTML = html;
-    el.dataset.stop = nearest.id;
-    el.hidden = false;
+  // ---------- rest points (POIs): map icons, popups, "next 30 km" strip ----------
+  var RACE_WEEKDAY = 5;          // 31 Oct 2026 is a Saturday (0 = Monday)
+  var STRIP_KM = 30;
+
+  // ETA at a km: shifted by how far ahead/behind you are once a position is known.
+  function poiEta(km) {
+    var base = etaAtKm(km);
+    return state.me ? state.me.at + (base - etaAtKm(state.me.km)) : base;
   }
-  function showNextOnMap() {
-    if (!state.map || !state.me) return;
-    var s = state.stops.filter(function (x) { return x.id === document.getElementById('nextBanner').dataset.stop; })[0];
-    if (!s) return;
-    var b = new maplibregl.LngLatBounds(state.me.lonlat, state.me.lonlat);
-    b.extend([s.lon, s.lat]);
-    state.route.points.forEach(function (p) { if (p[3] >= state.me.km && p[3] <= s.km) b.extend([p[0], p[1]]); });
-    var opts = { padding: { top: 80, bottom: 120, left: 40, right: 60 }, duration: 1200 };
-    if (state.headingUp) opts.bearing = bearingAhead(state.me.km);
-    state.map.fitBounds(b, opts);
+  // Every chain convenience store that has hours in OSM is tagged 24/7, so untagged ones are assumed 24/7.
+  var CHAINS_24H = { '7eleven': 1, familymart: 1, hilife: 1, okmart: 1 };
+  function poiStatus(p) {
+    if (!p.oh && CHAINS_24H[p.brand]) return { known: true, open: true, h24: true, assumed: true };
+    return POI.statusAt(p.oh, RACE_WEEKDAY, poiEta(p.km));
+  }
+  function isPlanned(p) {
+    return state.stops.some(function (s) { return s.type !== 'rest' && Math.abs(s.km - p.km) < 0.15; });
+  }
+  function statusHtml(st, eta) {
+    if (!st.known) return '<span class="st-unknown">營業時間未知</span>';
+    if (st.open) return '<span class="st-open">' + (st.h24 ? '24 小時' + (st.assumed ? '（推定）' : '') : '營業中') + '</span>（預計 ' + fmt(eta) + ' 到）';
+    var when = st.opensAt === null ? '當天不營業' : (st.tomorrow ? '明天 ' : '') + fmt(st.opensAt) + ' 開';
+    return '<span class="st-closed">預計 ' + fmt(eta) + ' 到時已打烊</span>，' + when;
+  }
+  function brandName(p) { return (p.brand && state.brands[p.brand]) ? state.brands[p.brand].name : POI.CAT[p.cat].label; }
+
+  function poiFeatures() {
+    return {
+      type: 'FeatureCollection',
+      features: state.pois.map(function (p, i) {
+        var st = poiStatus(p);
+        var closed = st.known && !st.open;
+        return { type: 'Feature', properties: { i: i, icon: POI.iconKey(p, closed) }, geometry: { type: 'Point', coordinates: [p.lon, p.lat] } };
+      })
+    };
+  }
+
+  function openPoi(i, fly) {
+    var p = state.pois[i];
+    if (!p || !state.map) return;
+    var eta = poiEta(p.km);
+    var html = '<div class="poi-pop"><b>' + esc(p.name || brandName(p)) + '</b><br>' +
+      '<span class="hint">' + esc(brandName(p)) + ' · km ' + p.km.toFixed(1) + ' · 離路線 ' + Math.round(p.off) + ' m' +
+      (state.me ? ' · 再 ' + Math.max(0, p.km - state.me.km).toFixed(1) + ' km' : '') + '</span><br>' +
+      statusHtml(poiStatus(p), eta) + (isPlanned(p) ? '<br>⭐ 計畫停站' : '') +
+      '<br><a href="' + navLink(p) + '" target="_blank" rel="noopener">導航過去</a></div>';
+    if (fly) state.map.flyTo({ center: [p.lon, p.lat], zoom: Math.max(state.map.getZoom(), 15), duration: 1000 });
+    new maplibregl.Popup({ offset: 16 }).setLngLat([p.lon, p.lat]).setHTML(html).addTo(state.map);
+  }
+
+  function initPoiLayers() {
+    if (!state.pois.length) return;
+    var map = state.map;
+    POI.buildBadges(state.brands).then(function () {
+      Object.keys(POI.badges).forEach(function (k) {
+        var cv = POI.badges[k];
+        if (!map.hasImage(k)) map.addImage(k, cv.getContext('2d').getImageData(0, 0, cv.width, cv.height), { pixelRatio: 2 });
+      });
+      map.addSource('pois', { type: 'geojson', data: poiFeatures(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36 });
+      map.addLayer({
+        id: 'poi-cluster', type: 'circle', source: 'pois', filter: ['has', 'point_count'],
+        paint: { 'circle-color': '#ffffff', 'circle-stroke-color': '#1d1f22', 'circle-stroke-width': 2, 'circle-radius': ['step', ['get', 'point_count'], 12, 10, 15, 30, 18] }
+      }, 'stops-circle');
+      map.addLayer({
+        id: 'poi-cluster-count', type: 'symbol', source: 'pois', filter: ['has', 'point_count'],
+        layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 11, 'text-font': ['Noto Sans Regular'] },
+        paint: { 'text-color': '#1d1f22' }
+      }, 'stops-circle');
+      map.addLayer({
+        id: 'poi-icon', type: 'symbol', source: 'pois', filter: ['!', ['has', 'point_count']],
+        layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.75, 15, 1] }
+      }, 'stops-circle');
+      map.on('click', 'poi-icon', function (e) { openPoi(e.features[0].properties.i, false); });
+      map.on('click', 'poi-cluster', function (e) {
+        map.easeTo({ center: e.features[0].geometry.coordinates, zoom: map.getZoom() + 2 });
+      });
+      ['poi-icon', 'poi-cluster'].forEach(function (l) {
+        map.on('mouseenter', l, function () { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', l, function () { map.getCanvas().style.cursor = ''; });
+      });
+      state.poiReady = true;
+      renderStrip();
+    });
+  }
+
+  function refreshPois() {
+    if (state.poiReady) state.map.getSource('pois').setData(poiFeatures());
+    renderStrip();
+  }
+
+  var badgeUrlCache = {};
+  function badgeUrl(key) {
+    if (!badgeUrlCache[key] && POI.badges[key]) badgeUrlCache[key] = POI.badges[key].toDataURL();
+    return badgeUrlCache[key] || '';
+  }
+
+  function renderStrip() {
+    var el = document.getElementById('strip');
+    if (!state.me || !state.schedule || !state.poiReady) { el.hidden = true; return; }
+    var me = state.me;
+    var items = state.pois.map(function (p, i) { return { p: p, i: i }; })
+      .filter(function (x) { return x.p.km > me.km + 0.05 && x.p.km <= me.km + STRIP_KM; });
+    // Nearest place you can actually use on arrival (open or unknown hours).
+    var usable = items.filter(function (x) { var st = poiStatus(x.p); return !st.known || st.open; })[0];
+    var head = usable
+      ? '最近：' + esc(usable.p.name || brandName(usable.p)) + ' · <b>' + (usable.p.km - me.km).toFixed(1) + ' km</b> · 約 ' +
+        Math.max(1, Math.round(poiEta(usable.p.km) - poiEta(me.km))) + ' 分 ›'
+      : '前方 ' + STRIP_KM + ' km 沒有營業中的休息點';
+    var html = '<div class="strip-head" data-i="' + (usable ? usable.i : '') + '">' + head + '</div>';
+    if (!items.length) {
+      html += '<div class="strip-empty">前方 ' + STRIP_KM + ' km 內沒有店家資料</div>';
+      el.innerHTML = html; el.hidden = false; return;
+    }
+    html += '<div class="strip-track"><div class="strip-line"></div><div class="strip-me"></div>';
+    for (var t = 0; t <= STRIP_KM; t += 5) html += '<div class="strip-tick" style="left:' + (t / STRIP_KM * 100) + '%">' + (t === 0 ? '你' : t) + '</div>';
+    html += '</div>';
+    el.innerHTML = html;
+    el.hidden = false;
+
+    // Stack icons in lanes so nearby shops don't overlap; overflow becomes "+N".
+    var track = el.querySelector('.strip-track');
+    var W = track.clientWidth;
+    var LANES = 2, ICON = 28, GAP = 2;
+    var laneEnd = [], extra = {};
+    items.forEach(function (x) {
+      var px = (x.p.km - me.km) / STRIP_KM * W;
+      var lane = -1;
+      for (var l = 0; l < LANES; l++) if (laneEnd[l] === undefined || px - laneEnd[l] >= ICON + GAP) { lane = l; break; }
+      if (lane < 0) {
+        var bucket = Math.round(px / ICON);
+        extra[bucket] = extra[bucket] || { px: px, n: 0 };
+        extra[bucket].n++;
+        return;
+      }
+      laneEnd[lane] = px;
+      var st = poiStatus(x.p);
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'strip-icon' + (isPlanned(x.p) ? ' plan' : '');
+      b.style.left = px + 'px';
+      b.style.bottom = (26 + lane * (ICON + 2)) + 'px';
+      b.title = (x.p.name || brandName(x.p)) + ' · ' + (x.p.km - me.km).toFixed(1) + ' km';
+      b.innerHTML = '<img alt="" src="' + badgeUrl(POI.iconKey(x.p, st.known && !st.open)) + '">';
+      b.addEventListener('click', function () { openPoi(x.i, true); });
+      track.appendChild(b);
+    });
+    Object.keys(extra).forEach(function (k) {
+      var d = document.createElement('div');
+      d.className = 'strip-more';
+      d.style.left = extra[k].px + 'px';
+      d.style.bottom = (26 + LANES * (ICON + 2)) + 'px';
+      d.textContent = '+' + extra[k].n;
+      track.appendChild(d);
+    });
+    var h = el.querySelector('.strip-head');
+    h.addEventListener('click', function () { if (h.dataset.i !== '') openPoi(+h.dataset.i, true); });
   }
 
   function renderReport() {
-    renderBanner();
     if (!state.me || !state.schedule) return;
     var r = buildReport();
     state.reportText = r.text;
@@ -663,7 +786,7 @@
   }
 
   // ---------- wiring ----------
-  function update() { computeSchedule(); renderSchedule(); renderCards(); refreshMap(); renderReport(); }
+  function update() { computeSchedule(); renderSchedule(); renderCards(); refreshMap(); renderReport(); refreshPois(); }
 
   document.querySelectorAll('.tab').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -682,7 +805,6 @@
   });
   ['pace', 'startTime'].forEach(function (id) { document.getElementById(id).addEventListener('input', update); });
   document.getElementById('locBtn').addEventListener('click', locateOnce);
-  document.getElementById('nextBanner').addEventListener('click', showNextOnMap);
   document.getElementById('trackToggle').addEventListener('change', function (e) { setTracking(e.target.checked); });
   document.getElementById('copyBtn').addEventListener('click', copyReport);
   document.getElementById('manualBtn').addEventListener('click', function () {
@@ -694,10 +816,16 @@
 
   renderPrep();
   if (window.innerWidth >= 900) document.getElementById('legendBox').open = true;
-  Promise.all([fetch('data/route.json').then(function (r) { return r.json(); }), fetch('data/stops.json').then(function (r) { return r.json(); })])
+  function optionalJson(url, fallback) {
+    return fetch(url).then(function (r) { return r.ok ? r.json() : fallback; }).catch(function () { return fallback; });
+  }
+  Promise.all([fetch('data/route.json').then(function (r) { return r.json(); }), fetch('data/stops.json').then(function (r) { return r.json(); }),
+    optionalJson('data/pois.json', []), optionalJson('data/brands.json', {})])
     .then(function (res) {
       state.route = res[0];
       state.stops = res[1].sort(function (a, b) { return a.km - b.km; });
+      state.pois = res[2].sort(function (a, b) { return a.km - b.km; });
+      state.brands = res[3];
       computeSchedule();
       renderSchedule();
       renderLegend();

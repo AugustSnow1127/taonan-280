@@ -1,0 +1,124 @@
+{
+ "7eleven": {
+  "name": "7-ELEVEN",
+  "logo": "img/logos/7eleven.png"
+ },
+ "85c": {
+  "name": "85度C",
+  "logo": "",
+  "short": "85",
+  "bg": "#9b1b30",
+  "fg": "#fff"
+ },
+ "bafang": {
+  "name": "八方雲集",
+  "logo": "",
+  "short": "八方",
+  "bg": "#c8102e",
+  "fg": "#fff"
+ },
+ "chingshin": {
+  "name": "清心福全",
+  "logo": "",
+  "short": "清心",
+  "bg": "#00913a",
+  "fg": "#fff"
+ },
+ "coco": {
+  "name": "CoCo都可",
+  "logo": "",
+  "short": "CoCo",
+  "bg": "#f08200",
+  "fg": "#fff"
+ },
+ "cpc": {
+  "name": "台灣中油",
+  "logo": "img/logos/cpc.png"
+ },
+ "familymart": {
+  "name": "全家",
+  "logo": "img/logos/familymart.png"
+ },
+ "formosa": {
+  "name": "台塑石油",
+  "logo": "",
+  "short": "台塑",
+  "bg": "#d7000f",
+  "fg": "#fff"
+ },
+ "hilife": {
+  "name": "萊爾富",
+  "logo": "",
+  "short": "萊",
+  "bg": "#e60012",
+  "fg": "#fff"
+ },
+ "laya": {
+  "name": "拉亞漢堡",
+  "logo": "",
+  "short": "拉亞",
+  "bg": "#f39800",
+  "fg": "#fff"
+ },
+ "louisa": {
+  "name": "路易莎",
+  "logo": "",
+  "short": "L",
+  "bg": "#1b1b1b",
+  "fg": "#fff"
+ },
+ "meiermei": {
+  "name": "美而美",
+  "logo": "",
+  "short": "美",
+  "bg": "#e60012",
+  "fg": "#fff"
+ },
+ "mjc": {
+  "name": "早安美芝城",
+  "logo": "",
+  "short": "美芝",
+  "bg": "#e4007f",
+  "fg": "#fff"
+ },
+ "mwd": {
+  "name": "麥味登",
+  "logo": "",
+  "short": "麥",
+  "bg": "#e85298",
+  "fg": "#fff"
+ },
+ "npc": {
+  "name": "全國加油站",
+  "logo": "img/logos/npc.png"
+ },
+ "okmart": {
+  "name": "OK 超商",
+  "logo": "img/logos/okmart.png"
+ },
+ "sanma": {
+  "name": "三媽臭臭鍋",
+  "logo": "",
+  "short": "三媽",
+  "bg": "#c30d23",
+  "fg": "#fff"
+ },
+ "sihai": {
+  "name": "四海遊龍",
+  "logo": "",
+  "short": "四海",
+  "bg": "#d32f2f",
+  "fg": "#fff"
+ },
+ "starbucks": {
+  "name": "星巴克",
+  "logo": "img/logos/starbucks.png"
+ },
+ "teamagic": {
+  "name": "茶的魔手",
+  "logo": "",
+  "short": "魔手",
+  "bg": "#e60012",
+  "fg": "#fff"
+ }
+}

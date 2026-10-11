@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>桃南 280</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <main>
@@ -14,7 +14,7 @@
     <div class="race-layout">
       <div class="map-wrap">
         <div id="map"></div>
-        <button id="nextBanner" class="next-banner" type="button" hidden></button>
+        <div id="strip" class="strip" hidden></div>
         <div class="map-controls">
           <div class="seg-toggle" role="group" aria-label="路線顏色">
             <button data-color="strategy" class="active">策略</button>
@@ -98,14 +98,15 @@
           <div class="prep-grid" id="prepRoot"></div>
         </details>
 
-        <p class="source small"><a href="data/taonan-280.gpx" download>下載 GPX（匯入碼錶）</a>。路線是用 OpenStreetMap 重建的，不是官方 GPX：km 79–112 走台1，不是台61 側路，比賽當天請照大會指示騎。檢查站資料來自 2026 報名頁的搜尋摘要，各站補給品項不明。</p>
+        <p class="source small"><a href="data/taonan-280.gpx" download>下載 GPX（匯入碼錶）</a>。路線是用 OpenStreetMap 重建的，不是官方 GPX：km 79–112 走台1，不是台61 側路，比賽當天請照大會指示騎。檢查站資料來自 2026 報名頁的搜尋摘要，各站補給品項不明。 商標為各公司所有，僅供個人參考。店家資料來自 OpenStreetMap。</p>
       </aside>
     </div>
   </section>
 </main>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="js/plan.js?v=11"></script>
-<script src="js/app.js?v=11"></script>
+<script src="js/pois.js?v=13"></script>
+<script src="js/plan.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
 </body>
 </html>

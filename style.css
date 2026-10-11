@@ -174,3 +174,26 @@ tr.official td:first-child { font-weight: 700; }
 .next-banner .nb-main { font-size: 1rem; font-weight: 700; }
 .next-banner .nb-main b { color: var(--accent); }
 .next-banner .nb-sub { font-size: .78rem; color: var(--muted); }
+
+/* "next 30 km" rest-point strip at the bottom of the map */
+.strip {
+  position: absolute; left: .75rem; right: 3rem; bottom: .6rem; z-index: 2;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+  padding: .4rem .6rem .3rem; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.strip-head { font-size: .9rem; font-weight: 700; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip-head b { color: var(--accent); }
+.strip-track { position: relative; height: 100px; margin: .25rem 6px 0 14px; }
+.strip-line { position: absolute; left: 0; right: 0; bottom: 18px; height: 4px; border-radius: 2px; background: var(--accent); opacity: .35; }
+.strip-me { position: absolute; left: -9px; bottom: 13px; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 4px rgba(31,111,235,.25); }
+.strip-tick { position: absolute; bottom: 0; transform: translateX(-50%); font-size: .65rem; color: var(--muted); }
+.strip-tick::before { content: ''; position: absolute; left: 50%; top: -9px; width: 1px; height: 6px; background: var(--muted); }
+.strip-icon { position: absolute; width: 28px; height: 28px; transform: translateX(-50%); cursor: pointer; padding: 0; border: 0; background: none; }
+.strip-icon img { width: 28px; height: 28px; display: block; }
+.strip-icon.plan img { border-radius: 50%; box-shadow: 0 0 0 3px #f59e0b; }
+.strip-more { position: absolute; transform: translateX(-50%); font-size: .65rem; color: var(--muted); }
+.strip-empty { font-size: .8rem; color: var(--muted); padding: .3rem 0; }
+.poi-pop b { font-size: .95rem; }
+.poi-pop .st-open { color: var(--easy); font-weight: 700; }
+.poi-pop .st-closed { color: var(--critical); font-weight: 700; }
+.poi-pop .st-unknown { color: var(--muted); }
