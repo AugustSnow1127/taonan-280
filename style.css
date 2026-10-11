@@ -56,7 +56,7 @@ h3 { font-size: .95rem; }
 .tabpane { display: none; }
 .tabpane.active { display: block; }
 
-.race-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; height: calc(100vh - 70px); }
+.race-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; height: calc(100vh - 52px); }
 .map-wrap { position: relative; min-height: 420px; }
 #map { position: absolute; inset: 0; }
 .map-controls { position: absolute; top: .75rem; left: .75rem; display: flex; flex-direction: column; gap: .5rem; max-width: calc(100% - 4rem); }
@@ -134,3 +134,7 @@ tr.official td:first-child { font-weight: 700; }
 .report .bad { color: var(--critical); }
 .report .lbl { color: var(--muted); font-size: .85rem; }
 .report hr { border: 0; border-top: 1px solid var(--line); margin: .45rem 0; }
+
+.top { padding: .5rem 1rem; }
+.map-btn { align-self: flex-start; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: .4rem .7rem; font: inherit; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+.map-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }

@@ -5,14 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>桃南 280</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <header class="top">
-  <div class="brand">
-    <h1>桃南 280 完賽計畫</h1>
-    <p class="sub">TIS 桃園 → 台南 280 km · 2026/10/31（六）· 05:00 出發 · 終點 21:00 關門</p>
-  </div>
   <nav class="tabs" role="tablist">
     <button class="tab active" data-tab="race" role="tab">比賽策略</button>
     <button class="tab" data-tab="prep" role="tab">賽前準備（20 天）</button>
@@ -31,6 +27,7 @@
             <button data-color="grade">坡度</button>
             <button data-color="segment">分段</button>
           </div>
+          <button id="headingBtn" class="map-btn" type="button">🧭 前進方向朝上</button>
           <div id="legend" class="legend"></div>
         </div>
       </div>

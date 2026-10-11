@@ -3,7 +3,7 @@
 
   var P = window.PLAN;
   var C = P.colors;
-  var state = { route: null, stops: null, colorMode: 'strategy', schedule: null, map: null, mapReady: false, wind: null, me: null, watchId: null, wakeLock: null, reportText: '' };
+  var state = { route: null, stops: null, colorMode: 'strategy', schedule: null, map: null, mapReady: false, wind: null, me: null, watchId: null, wakeLock: null, reportText: '', headingUp: false };
 
   // ---------- helpers ----------
   function hm(str) { var p = str.split(':'); return (+p[0]) * 60 + (+p[1]); }
@@ -392,6 +392,27 @@
     for (var i = 0; i < pts.length - 1; i++) if (pts[i + 1][3] >= km) return [pts[i][0], pts[i][1]];
     return [pts[pts.length - 1][0], pts[pts.length - 1][1]];
   }
+  // Direction of travel: from here to ~1 km further along the route.
+  function bearingAhead(km) {
+    var end = Math.min(km + 1, state.route.distance_km);
+    if (end - km < 0.2) km = Math.max(0, end - 1);
+    return bearing(pointAtKm(km), pointAtKm(end));
+  }
+  // Put the rider in the lower part of the map so more road ahead is visible.
+  function aheadOffset() { return [0, Math.round(state.map.getContainer().clientHeight * 0.25)]; }
+  function toggleHeading() {
+    state.headingUp = !state.headingUp;
+    document.getElementById('headingBtn').classList.toggle('active', state.headingUp);
+    if (!state.map) return;
+    if (!state.headingUp) { state.map.easeTo({ bearing: 0, offset: [0, 0], duration: 800 }); return; }
+    if (!state.me) {
+      document.getElementById('locMsg').textContent = '先定位，才知道你接下來要往哪個方向騎。';
+      locateOnce();
+      return;
+    }
+    state.map.easeTo({ center: state.me.lonlat, bearing: bearingAhead(state.me.km), offset: aheadOffset(), pitch: 60, zoom: Math.max(state.map.getZoom(), 13.5), duration: 1000 });
+  }
+
   function nextStops(km) {
     return state.stops.filter(function (s) { return s.type !== 'rest' && s.km > km + 0.3; });
   }
@@ -408,8 +429,10 @@
     var next = nextStops(state.me.km)[0];
     map.setFilter('next-stop', ['==', ['get', 'id'], next ? next.id : '']);
     map.setPaintProperty('route-line', 'line-color', colorExpr(state.colorMode));
-    if (fly) map.flyTo({ center: state.me.lonlat, zoom: 12.5, pitch: 60, duration: 1500 });
-    else map.easeTo({ center: state.me.lonlat, duration: 800 });
+    var cam = { center: state.me.lonlat };
+    if (state.headingUp) { cam.bearing = bearingAhead(state.me.km); cam.offset = aheadOffset(); }
+    if (fly) map.flyTo(Object.assign(cam, { zoom: 13.5, pitch: 60, duration: 1500 }));
+    else map.easeTo(Object.assign(cam, { duration: 800 }));
   }
 
   // Snapshot link: opens the map at this km, frozen at the report time.
@@ -605,6 +628,7 @@
   });
   ['pace', 'startTime'].forEach(function (id) { document.getElementById(id).addEventListener('input', update); });
   document.getElementById('locBtn').addEventListener('click', locateOnce);
+  document.getElementById('headingBtn').addEventListener('click', toggleHeading);
   document.getElementById('trackToggle').addEventListener('change', function (e) { setTracking(e.target.checked); });
   document.getElementById('copyBtn').addEventListener('click', copyReport);
   document.getElementById('manualBtn').addEventListener('click', function () {
