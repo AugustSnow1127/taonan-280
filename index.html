@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>桃南 280</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="style.css?v=5">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>桃南 280 完賽計畫</h1>
+    <p class="sub">TIS 桃園 → 台南 280 km · 2026/10/31（六）· 05:00 出發 · 終點 21:00 關門</p>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="race" role="tab">比賽策略</button>
+    <button class="tab" data-tab="prep" role="tab">賽前準備（20 天）</button>
+  </nav>
+</header>
+
+<main>
+  <!-- RACE TAB -->
+  <section id="tab-race" class="tabpane active">
+    <div class="race-layout">
+      <div class="map-wrap">
+        <div id="map"></div>
+        <div class="map-controls">
+          <div class="seg-toggle" role="group" aria-label="路線顏色">
+            <button data-color="strategy" class="active">策略</button>
+            <button data-color="grade">坡度</button>
+            <button data-color="segment">分段</button>
+          </div>
+          <div id="legend" class="legend"></div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <div class="card coach">
+          <h2>比賽當天：回報教練</h2>
+          <div class="row">
+            <button id="locBtn" class="btn primary" type="button">📍 定位並產生回報卡</button>
+            <label class="small"><input id="trackToggle" type="checkbox"> 持續追蹤</label>
+          </div>
+          <div class="row small manual">
+            <label>GPS 抓不到時，手動輸入碼錶 km <input id="manualKm" type="number" inputmode="decimal" step="0.1" min="0" max="290"></label>
+            <button id="manualBtn" class="btn" type="button">用這個 km</button>
+          </div>
+          <p id="locMsg" class="hint small"></p>
+          <div id="reportWrap" hidden>
+            <div id="reportCard" class="report"></div>
+            <button id="copyBtn" class="btn" type="button">複製文字給教練</button>
+          </div>
+        </div>
+
+        <div class="card sim">
+          <h2>配速模擬</h2>
+          <label class="row">
+            <span>速度（相對計畫）</span>
+            <output id="paceOut">100%</output>
+          </label>
+          <input id="pace" type="range" min="75" max="115" step="1" value="100">
+          <div class="row small">
+            <label>出發時間 <input id="startTime" type="time" value="05:00"></label>
+          </div>
+          <div id="verdict" class="verdict"></div>
+          <div class="table-wrap">
+            <table id="etaTable">
+              <thead><tr><th>站點</th><th>km</th><th>預計抵達</th><th>關門</th><th>餘裕</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="hint">預設為「合理掉速」：到王功前 20 km/h，之後 18 → 17 → 16 km/h。全程停站合計 ≤ 60 分鐘。</p>
+        </div>
+
+        <div class="card">
+          <h2>王功判斷規則（km 165）</h2>
+          <ul class="rule">
+            <li class="go"><b>14:00 前抵達</b>：照計畫繼續。</li>
+            <li class="warn"><b>14:00–14:30 抵達</b>：啟動備案，每站 ≤ 5 分鐘、邊騎邊吃、不坐下吃飯。</li>
+            <li class="stop"><b>14:30 後抵達</b>：已關門，不算正式完賽。照「安全騎完」模式繼續騎到鹿耳門，並自己安排回程。</li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h2>風向預報 <span id="windStatus" class="pill">載入中</span></h2>
+          <div id="windBox" class="small"></div>
+        </div>
+
+        <div id="segCards"></div>
+
+        <div class="card">
+          <h2>終點與回程（經典組）</h2>
+          <ul class="small">
+            <li>行李由大會行李車載到終點。</li>
+            <li>加購回桃園補給車：每人 NT$1,600，14:00–21:00 從鹿耳門發車。接近 21:00 才完賽可能會錯過。</li>
+            <li>超過關門也會騎完（非正式完賽）。這種情況要自己安排回程：先想好接駁的人或交通方式。</li>
+            <!-- TODO: confirm the van's last departure and booking status with the organiser -->
+            <li class="todo">待辦：向大會確認補給車預約狀態和最後發車時間。</li>
+          </ul>
+        </div>
+
+        <p class="source small"><a href="data/taonan-280.gpx" download>下載 GPX（匯入碼錶）</a>。路線是用 OpenStreetMap 重建的，不是官方 GPX：km 79–112 走台1，不是台61 側路，比賽當天請照大會指示騎。檢查站資料來自 2026 報名頁的搜尋摘要，各站補給品項不明。</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- PREP TAB -->
+  <section id="tab-prep" class="tabpane">
+    <div class="prep-grid" id="prepRoot"></div>
+  </section>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="js/plan.js?v=4"></script>
+<script src="js/app.js?v=4"></script>
+</body>
+</html>

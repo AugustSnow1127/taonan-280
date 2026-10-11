@@ -1,0 +1,100 @@
+[
+  {
+    "id": "start",
+    "name_en": "Qingpu Start",
+    "name_zh": "青埔棒球場 (樂天桃園棒球場)",
+    "type": "official",
+    "km": 0.0,
+    "official_km": 0.0,
+    "lon": 121.20039,
+    "lat": 25.00098,
+    "cutoff": "05:30"
+  },
+  {
+    "id": "cp1",
+    "name_en": "CP1 Hsinchu Coast",
+    "name_zh": "新竹市 風情海岸",
+    "type": "official",
+    "km": 45.98,
+    "official_km": 44.8,
+    "lon": 120.91445,
+    "lat": 24.7788,
+    "cutoff": "08:30"
+  },
+  {
+    "id": "s1",
+    "name_en": "7-Eleven Tongxiao",
+    "name_zh": "7-ELEVEN",
+    "type": "store",
+    "km": 88.93,
+    "lon": 120.67857,
+    "lat": 24.48682
+  },
+  {
+    "id": "r1",
+    "name_en": "Da'an Rest Area",
+    "name_zh": "大安休息站",
+    "type": "rest",
+    "km": 104.51,
+    "lon": 120.59201,
+    "lat": 24.37877
+  },
+  {
+    "id": "s2",
+    "name_en": "7-Eleven Wuqi",
+    "name_zh": "7-ELEVEN",
+    "type": "store",
+    "km": 124.05,
+    "lon": 120.51423,
+    "lat": 24.22867
+  },
+  {
+    "id": "r2",
+    "name_en": "Lukang Rest Area (under construction)",
+    "name_zh": "台61線179K鹿港休息站(施工中)",
+    "type": "rest",
+    "km": 148.07,
+    "lon": 120.41248,
+    "lat": 24.06698
+  },
+  {
+    "id": "cp2",
+    "name_en": "CP2 Wanggong",
+    "name_zh": "彰化芳苑 王功福海宮",
+    "type": "official",
+    "km": 165.01,
+    "official_km": 163.0,
+    "lon": 120.33471,
+    "lat": 23.95323,
+    "cutoff": "14:30"
+  },
+  {
+    "id": "s3",
+    "name_en": "7-Eleven Sihu",
+    "name_zh": "7-ELEVEN 林厝門市",
+    "type": "store",
+    "km": 202.73,
+    "lon": 120.17793,
+    "lat": 23.67144
+  },
+  {
+    "id": "s4",
+    "name_en": "7-Eleven Budai",
+    "name_zh": "7-ELEVEN 新塭門市",
+    "type": "store",
+    "km": 248.21,
+    "lon": 120.15948,
+    "lat": 23.32571
+  },
+  {
+    "id": "finish",
+    "name_en": "Luermen Finish",
+    "name_zh": "正統鹿耳門聖母廟",
+    "type": "official",
+    "km": 280.3,
+    "official_km": 280.0,
+    "lon": 120.12721,
+    "lat": 23.06785,
+    "cutoff": "21:00"
+  }
+]
