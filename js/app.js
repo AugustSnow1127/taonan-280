@@ -288,6 +288,8 @@
       map.on('mouseenter', 'stops-circle', function () { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', 'stops-circle', function () { map.getCanvas().style.cursor = ''; });
       state.mapReady = true;
+      var attrib = map.getContainer().querySelector('.maplibregl-ctrl-attrib');
+      if (attrib) attrib.classList.remove('maplibregl-compact-show');
       if (state.me) drawMe(true);
     });
   }
@@ -400,7 +402,7 @@
     return bearing(pointAtKm(km), pointAtKm(end));
   }
   // Put the rider in the lower part of the map so more road ahead is visible.
-  function aheadOffset() { return [0, Math.round(state.map.getContainer().clientHeight * 0.25)]; }
+  function aheadOffset() { return [0, Math.round(state.map.getContainer().clientHeight * 0.12)]; }
   // Icon-only map control under the zoom buttons.
   function headingControl() {
     return {
@@ -532,7 +534,44 @@
     return { text: lines.join('\n'), html: html };
   }
 
+  // Nearest place to rest ahead (planned stop or optional rest area) + the next planned stop.
+  function renderBanner() {
+    var el = document.getElementById('nextBanner');
+    if (!state.me || !state.schedule) { el.hidden = true; return; }
+    var me = state.me, now = me.at, planHere = etaAtKm(me.km);
+    var ahead = state.stops.filter(function (s) { return s.km > me.km + 0.3; });
+    if (!ahead.length) { el.hidden = true; return; }
+    var nearest = ahead[0];
+    var planned = nextStops(me.km)[0];
+    function etaOf(s) {   // arrival time (not departure) at stop s
+      var row = state.schedule.rows.filter(function (r) { return r.stop.id === s.id; })[0];
+      return now + ((row ? row.arrive : etaAtKm(s.km)) - planHere);
+    }
+    function mins(s) { return Math.max(0, Math.round(etaOf(s) - now)); }
+    var html = '<div class="nb-main">下一站 ' + esc(nameOf(nearest)) + ' · <b>' + (nearest.km - me.km).toFixed(1) + ' km</b> · 約 ' + mins(nearest) + ' 分 ›</div>';
+    var sub = [];
+    if (nearest.type === 'rest') sub.push('非計畫停站');
+    if (planned && planned.id !== nearest.id) sub.push('計畫停站 ' + nameOf(planned) + ' ' + (planned.km - me.km).toFixed(0) + ' km，' + fmt(etaOf(planned)) + ' 到');
+    else if (planned) sub.push(fmt(etaOf(planned)) + ' 到' + (planned.cutoff ? '，關門 ' + planned.cutoff : ''));
+    html += '<div class="nb-sub">' + esc(sub.join('｜')) + '</div>';
+    el.innerHTML = html;
+    el.dataset.stop = nearest.id;
+    el.hidden = false;
+  }
+  function showNextOnMap() {
+    if (!state.map || !state.me) return;
+    var s = state.stops.filter(function (x) { return x.id === document.getElementById('nextBanner').dataset.stop; })[0];
+    if (!s) return;
+    var b = new maplibregl.LngLatBounds(state.me.lonlat, state.me.lonlat);
+    b.extend([s.lon, s.lat]);
+    state.route.points.forEach(function (p) { if (p[3] >= state.me.km && p[3] <= s.km) b.extend([p[0], p[1]]); });
+    var opts = { padding: { top: 80, bottom: 120, left: 40, right: 60 }, duration: 1200 };
+    if (state.headingUp) opts.bearing = bearingAhead(state.me.km);
+    state.map.fitBounds(b, opts);
+  }
+
   function renderReport() {
+    renderBanner();
     if (!state.me || !state.schedule) return;
     var r = buildReport();
     state.reportText = r.text;
@@ -643,6 +682,7 @@
   });
   ['pace', 'startTime'].forEach(function (id) { document.getElementById(id).addEventListener('input', update); });
   document.getElementById('locBtn').addEventListener('click', locateOnce);
+  document.getElementById('nextBanner').addEventListener('click', showNextOnMap);
   document.getElementById('trackToggle').addEventListener('change', function (e) { setTracking(e.target.checked); });
   document.getElementById('copyBtn').addEventListener('click', copyReport);
   document.getElementById('manualBtn').addEventListener('click', function () {

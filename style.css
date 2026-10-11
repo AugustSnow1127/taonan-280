@@ -163,3 +163,14 @@ tr.official td:first-child { font-weight: 700; }
 .prep-box[open] summary h2::before { content: '▾ '; }
 .prep-box .prep-grid { display: flex; flex-direction: column; gap: .6rem; padding: 0; margin-top: .5rem; }
 .prep-box .prep-grid .card { border: 0; padding: 0; }
+
+/* floating "next rest point" bar at the bottom of the map */
+.next-banner {
+  position: absolute; left: .75rem; right: 3rem; bottom: .6rem; z-index: 2;
+  text-align: left; font: inherit; cursor: pointer;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+  padding: .45rem .7rem; box-shadow: 0 2px 8px rgba(0,0,0,.25); line-height: 1.4;
+}
+.next-banner .nb-main { font-size: 1rem; font-weight: 700; }
+.next-banner .nb-main b { color: var(--accent); }
+.next-banner .nb-sub { font-size: .78rem; color: var(--muted); }
