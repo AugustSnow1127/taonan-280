@@ -277,7 +277,6 @@
       }, 'stops-circle');
       map.addLayer({ id: 'me-halo', type: 'circle', source: 'me', paint: { 'circle-radius': 18, 'circle-color': '#1f6feb', 'circle-opacity': 0.25 } });
       map.addLayer({ id: 'me-dot', type: 'circle', source: 'me', paint: { 'circle-radius': 8, 'circle-color': '#1f6feb', 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
-      if (state.me) drawMe(false);
       map.on('click', 'stops-circle', function (e) {
         var p = e.features[0].properties;
         var row = state.schedule.rows.filter(function (r) { return r.stop.id === p.id; })[0];
@@ -288,6 +287,7 @@
       map.on('mouseenter', 'stops-circle', function () { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', 'stops-circle', function () { map.getCanvas().style.cursor = ''; });
       state.mapReady = true;
+      if (state.me) drawMe(true);
     });
   }
 
@@ -396,8 +396,8 @@
     return state.stops.filter(function (s) { return s.type !== 'rest' && s.km > km + 0.3; });
   }
 
-  function setPosition(km, lonlat, offM, fly) {
-    state.me = { km: km, lonlat: lonlat, offM: offM, at: nowMinutes() };
+  function setPosition(km, lonlat, offM, fly, src, at) {
+    state.me = { km: km, lonlat: lonlat, offM: offM, src: src || 'gps', at: at === undefined ? nowMinutes() : at };
     renderReport();
     drawMe(fly);
   }
@@ -410,6 +410,18 @@
     map.setPaintProperty('route-line', 'line-color', colorExpr(state.colorMode));
     if (fly) map.flyTo({ center: state.me.lonlat, zoom: 12.5, pitch: 60, duration: 1500 });
     else map.easeTo({ center: state.me.lonlat, duration: 800 });
+  }
+
+  // Snapshot link: opens the map at this km, frozen at the report time.
+  function mapLink(km, at) {
+    return location.origin + location.pathname + '?km=' + km.toFixed(1) + '&at=' + fmt(at).replace(':', '');
+  }
+  function navLink(stop) {
+    return 'https://www.google.com/maps/dir/?api=1&travelmode=bicycling&destination=' + stop.lat + ',' + stop.lon;
+  }
+  // Rest areas between here and the next planned stop (optional, not in the stop budget).
+  function restBefore(km, untilKm) {
+    return state.stops.filter(function (s) { return s.type === 'rest' && s.km > km + 0.3 && s.km < untilKm; });
   }
 
   function bufCls(min) { return min < 0 ? 'bad' : (min < 30 ? 'warn' : 'ok'); }
@@ -436,7 +448,11 @@
     });
     var near = state.stops.filter(function (s) { return s.km <= me.km + 0.3; }).pop();
     var where = near ? nameOf(near) + (me.km - near.km < 1 ? ' 附近' : ' 之後 ' + (me.km - near.km).toFixed(1) + ' km') : '';
-    var offTxt = me.offM === null ? '手動輸入 km' : '偏離路線 ' + Math.round(me.offM) + ' m';
+    var offTxt;
+    if (me.src === 'link') offTxt = '這是 ' + fmt(now) + ' 回報時的位置';
+    else if (me.offM === null) offTxt = '手動輸入 km';
+    else offTxt = '偏離路線 ' + Math.round(me.offM) + ' m';
+    var rests = ns.length ? restBefore(me.km, ns[0].stop.km) : [];
     var deltaTxt;
     if (Math.abs(delta) < 1) deltaTxt = '準時';
     else if (delta > 0) deltaTxt = '落後 ' + Math.round(delta) + ' 分';
@@ -452,8 +468,12 @@
       if (n.cut !== null) t += '｜關門 ' + n.stop.cutoff + '｜餘裕 ' + signed(n.cut - n.eta);
       lines.push(t);
     });
+    rests.forEach(function (r) {
+      lines.push('途中可休息：' + nameOf(r) + '（km ' + r.km.toFixed(0) + '，再 ' + (r.km - me.km).toFixed(0) + ' km，不在計畫停站內）');
+    });
     lines.push('預估完賽（照計畫配速）：' + fmt(finishPlan) + '｜關門 ' + finish.cutoff + '｜' + signed(finishCut - finishPlan));
     if (finishAvg !== null) lines.push('預估完賽（照目前落後比例）：' + fmt(finishAvg));
+    lines.push('地圖：' + mapLink(me.km, now));
 
     var deltaCls = delta > 15 ? 'bad' : (delta > 0 ? 'warn' : 'ok');
     var html = '<div class="lbl">📍 ' + fmt(now) + ' · ' + esc(offTxt) + '</div>' +
@@ -463,7 +483,11 @@
     ns.forEach(function (n, i) {
       html += '<div><span class="lbl">' + (i === 0 ? '下一站' : '再下站') + '</span> <b>' + esc(nameOf(n.stop)) + '</b></div>' +
         '<div>再 <b>' + (n.stop.km - me.km).toFixed(1) + ' km</b> · 預計 <b>' + fmt(n.eta) + '</b>' +
-        (n.cut !== null ? ' · 關門 ' + n.stop.cutoff + ' <b class="' + bufCls(n.cut - n.eta) + '">' + signed(n.cut - n.eta) + '</b>' : '') + '</div>';
+        (n.cut !== null ? ' · 關門 ' + n.stop.cutoff + ' <b class="' + bufCls(n.cut - n.eta) + '">' + signed(n.cut - n.eta) + '</b>' : '') +
+        ' · <a href="' + navLink(n.stop) + '" target="_blank" rel="noopener">導航</a></div>';
+    });
+    rests.forEach(function (r) {
+      html += '<div class="lbl">途中可休息：' + esc(nameOf(r)) + '，再 ' + (r.km - me.km).toFixed(1) + ' km（不在計畫停站內）</div>';
     });
     html += '<hr><div><span class="lbl">預估完賽</span> <b class="' + bufCls(finishCut - finishPlan) + '">' + fmt(finishPlan) + '</b>（關門 ' + finish.cutoff + '，' + signed(finishCut - finishPlan) + '）</div>';
     if (finishAvg !== null) html += '<div class="lbl">照目前落後比例：' + fmt(finishAvg) + '</div>';
@@ -601,6 +625,13 @@
       renderCards();
       initMap();
       loadWind();
+      var q = new URLSearchParams(location.search);
+      if (q.get('km')) {
+        var km = Math.max(0, Math.min(state.route.distance_km, parseFloat(q.get('km')) || 0));
+        var at = q.get('at');
+        var atMin = at && /^\d{3,4}$/.test(at) ? hm(at.slice(0, -2) + ':' + at.slice(-2)) : undefined;
+        setPosition(km, pointAtKm(km), null, true, 'link', atMin);
+      }
     })
     .catch(function (e) {
       document.getElementById('segCards').innerHTML = '<div class="card todo">路線資料載入失敗：' + esc(e.message) + '。請用 HTTP 伺服器開啟（例如 python -m http.server）。</div>';
