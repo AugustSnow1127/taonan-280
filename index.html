@@ -5,16 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>桃南 280</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
-<header class="top">
-  <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="race" role="tab">比賽策略</button>
-    <button class="tab" data-tab="prep" role="tab">賽前準備（20 天）</button>
-  </nav>
-</header>
-
 <main>
   <!-- RACE TAB -->
   <section id="tab-race" class="tabpane active">
@@ -99,19 +92,19 @@
           </ul>
         </div>
 
+        <details class="card prep-box">
+          <summary><h2>賽前準備</h2></summary>
+          <div class="prep-grid" id="prepRoot"></div>
+        </details>
+
         <p class="source small"><a href="data/taonan-280.gpx" download>下載 GPX（匯入碼錶）</a>。路線是用 OpenStreetMap 重建的，不是官方 GPX：km 79–112 走台1，不是台61 側路，比賽當天請照大會指示騎。檢查站資料來自 2026 報名頁的搜尋摘要，各站補給品項不明。</p>
       </aside>
     </div>
   </section>
-
-  <!-- PREP TAB -->
-  <section id="tab-prep" class="tabpane">
-    <div class="prep-grid" id="prepRoot"></div>
-  </section>
 </main>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="js/plan.js?v=4"></script>
-<script src="js/app.js?v=4"></script>
+<script src="js/plan.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
 </body>
 </html>
