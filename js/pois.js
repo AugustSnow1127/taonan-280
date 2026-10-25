@@ -160,5 +160,5 @@
     return base + (closed ? '-off' : '');
   }
 
-  window.POI = { CAT: CAT, statusAt: statusAt, buildBadges: buildBadges, badges: badgeCache, iconKey: iconKey, SIZE: SIZE };
+  window.POI = { drawBadge: drawBadge, CAT: CAT, statusAt: statusAt, buildBadges: buildBadges, badges: badgeCache, iconKey: iconKey, SIZE: SIZE };
 })();

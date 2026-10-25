@@ -3,7 +3,7 @@
 
   var P = window.PLAN;
   var C = P.colors;
-  var state = { route: null, stops: null, colorMode: 'strategy', schedule: null, map: null, mapReady: false, wind: null, me: null, watchId: null, wakeLock: null, reportText: '', headingUp: false, pois: [], brands: {}, poiReady: false };
+  var state = { route: null, stops: null, colorMode: 'strategy', schedule: null, map: null, mapReady: false, wind: null, me: null, watchId: null, wakeLock: null, reportText: '', headingUp: false, pois: [], brands: {}, poiReady: false, stations: [] };
 
   // ---------- helpers ----------
   function hm(str) { var p = str.split(':'); return (+p[0]) * 60 + (+p[1]); }
@@ -157,6 +157,43 @@
     });
   }
 
+  // ---------- bail-out: rail stations ----------
+  var BAIL = { near: '#2e9e5b', mid: '#d99a00', far: '#d9452b' };
+  function haversineKm(lon1, lat1, lon2, lat2) {
+    var r = Math.PI / 180, dLat = (lat2 - lat1) * r, dLon = (lon2 - lon1) * r;
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 12742 * Math.asin(Math.sqrt(a));
+  }
+  // Nearest station in a straight line from a point: { s, d (km) }.
+  // Without a bike bag only TRA stations on the official unbagged-bike list are real bail-out points.
+  function usableStations() { return state.stations.filter(function (s) { return s.bike === 'yes'; }); }
+  function nearestStation(lon, lat) {
+    var best = { s: null, d: 99 };
+    usableStations().forEach(function (s) {
+      var d = haversineKm(lon, lat, s.lon, s.lat);
+      if (d < best.d) best = { s: s, d: d };
+    });
+    return best;
+  }
+  // Next station ahead along the route (by route km), ignoring ones far off the route.
+  // South of ~km 140 the railway runs 15–25 km inland, so fall back to the closest-to-route station ahead.
+  function nextStation(km) {
+    var ahead = usableStations().filter(function (s) { return s.km > km + 0.3; });
+    var near = ahead.filter(function (s) { return s.off <= 8; })[0];
+    if (near) return near;
+    var soon = ahead.filter(function (s) { return s.km <= km + 60; });
+    return soon.sort(function (a, b) { return (a.off - b.off) || (a.km - b.km); })[0] || ahead[0] || null;
+  }
+  function opLabel(s) { return s.op === 'THSR' ? '高鐵' : '台鐵'; }
+  var BIKE_RULE = {
+    yes: '✅ 開放兩鐵：整車上區間車，到窗口買半價自行車票（不能網路買）。',
+    no: '❌ 不開放兩鐵：沒有攜車袋不能帶車上車。',
+    unknown: '⚠️ 不確定是否開放兩鐵，當作不能整車上車。',
+    bag: '❌ 高鐵一定要拆輪、完整裝進攜車袋。垃圾袋可能被拒載。'
+  };
+  function stationIcon(s) { return s.op === 'THSR' ? 'st-THSR' : (s.bike === 'yes' ? 'st-TRA' : 'st-TRA-off'); }
+  function stationName(s) { return s.name + (/站$/.test(s.name) ? '' : '站'); }
+
   // ---------- map ----------
   function buildChunks() {
     var pts = state.route.points;
@@ -178,7 +215,7 @@
       for (var k = 0; k < segs.length; k++) if (mid >= segs[k].a.km) segIdx = k;
       feats.push({
         type: 'Feature',
-        properties: { km: mid, grade: Math.max(-6, Math.min(6, grade)), seg: segIdx, cls: strategyClass(mid, etaAtKm(mid)) },
+        properties: { bail: nearestStation(pts[i][0], pts[i][1]).d, km: mid, grade: Math.max(-6, Math.min(6, grade)), seg: segIdx, cls: strategyClass(mid, etaAtKm(mid)) },
         geometry: { type: 'LineString', coordinates: coords }
       });
       i = j;
@@ -196,6 +233,9 @@
     if (mode === 'grade') {
       return ['interpolate', ['linear'], ['get', 'grade'], -3, '#2b83ba', -1, '#4dac26', 1, '#a6d96a', 2, '#fdae61', 4, '#d7191c'];
     }
+    if (mode === 'bail') {
+      return ['step', ['get', 'bail'], BAIL.near, 3, BAIL.mid, 8, BAIL.far];
+    }
     if (mode === 'segment') {
       var m = ['match', ['get', 'seg']];
       C.segmentPalette.forEach(function (col, i) { m.push(i, col); });
@@ -210,6 +250,8 @@
     var items;
     if (state.colorMode === 'grade') {
       items = [['#2b83ba', '下坡'], ['#4dac26', '平路'], ['#fdae61', '+2%'], ['#d7191c', '+4% 以上']];
+    } else if (state.colorMode === 'bail') {
+      items = [[BAIL.near, '3 km 內有可整車上車的台鐵站'], [BAIL.mid, '3–8 km'], [BAIL.far, '8 km 以上：這裡放棄最麻煩'], ['#1d4f9c', '台鐵（開放兩鐵）'], ['#9aa0a6', '台鐵（不能整車上車）'], ['#f26a21', '高鐵（需攜車袋）']];
     } else if (state.colorMode === 'segment') {
       items = segmentsFromStops().map(function (s, i) { return [C.segmentPalette[i % C.segmentPalette.length], (i + 1) + '. → ' + nameOf(s.b)]; });
     } else {
@@ -515,6 +557,10 @@
     });
     lines.push('預估完賽（照計畫配速）：' + fmt(finishPlan) + '｜關門 ' + finish.cutoff + '｜' + signed(finishCut - finishPlan));
     if (finishAvg !== null) lines.push('預估完賽（照目前落後比例）：' + fmt(finishAvg));
+    var bailNow = nearestStation(me.lonlat[0], me.lonlat[1]);
+    var bailNext = nextStation(me.km);
+    if (bailNow.s) lines.push('撤退：最近車站 ' + opLabel(bailNow.s) + stationName(bailNow.s) + '（直線 ' + bailNow.d.toFixed(1) + ' km）' +
+      (bailNext && bailNext !== bailNow.s ? '｜前方下一站 ' + opLabel(bailNext) + stationName(bailNext) + '（沿路再 ' + (bailNext.km - me.km).toFixed(0) + ' km，離路線 ' + bailNext.off.toFixed(1) + ' km）' : ''));
     lines.push('地圖：' + mapLink(me.km, now));
 
     var deltaCls = delta > 15 ? 'bad' : (delta > 0 ? 'warn' : 'ok');
@@ -616,9 +662,50 @@
         map.on('mouseenter', l, function () { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', l, function () { map.getCanvas().style.cursor = ''; });
       });
+      initStationLayer();
       state.poiReady = true;
       renderStrip();
     });
+  }
+
+  function stationFeatures() {
+    return {
+      type: 'FeatureCollection',
+      features: state.stations.map(function (s, i) {
+        return { type: 'Feature', properties: { i: i, icon: stationIcon(s), label: stationName(s) }, geometry: { type: 'Point', coordinates: [s.lon, s.lat] } };
+      })
+    };
+  }
+  function initStationLayer() {
+    if (!state.stations.length) return;
+    var map = state.map;
+    [['TRA', '台鐵', '#1d4f9c', false], ['TRA-off', '台鐵', '#1d4f9c', true], ['THSR', '高鐵', '#f26a21', false]].forEach(function (t) {
+      var cv = POI.drawBadge(null, '', t[3], { short: t[1], bg: t[3] ? '#9aa0a6' : t[2], fg: '#fff' });
+      POI.badges['st-' + t[0]] = cv;
+      if (!map.hasImage('st-' + t[0])) map.addImage('st-' + t[0], cv.getContext('2d').getImageData(0, 0, cv.width, cv.height), { pixelRatio: 2 });
+    });
+    map.addSource('stations', { type: 'geojson', data: stationFeatures() });
+    map.addLayer({
+      id: 'station-icon', type: 'symbol', source: 'stations',
+      layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 7, 0.45, 10, 0.8, 13, 1.1],
+        'text-field': ['step', ['zoom'], '', 10, ['get', 'label']], 'text-size': 11, 'text-offset': [0, 1.6], 'text-anchor': 'top', 'text-font': ['Noto Sans Regular'], 'text-optional': true },
+      paint: { 'text-color': '#1d1f22', 'text-halo-color': '#fff', 'text-halo-width': 1.5 }
+    });
+    map.on('click', 'station-icon', function (e) { openStation(e.features[0].properties.i, false); });
+    map.on('mouseenter', 'station-icon', function () { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'station-icon', function () { map.getCanvas().style.cursor = ''; });
+  }
+  function openStation(i, fly) {
+    var s = state.stations[i];
+    if (!s || !state.map) return;
+    var rules = BIKE_RULE[s.bike] || '';
+    var html = '<div class="poi-pop"><b>' + opLabel(s) + ' ' + esc(stationName(s)) + '</b><br>' +
+      '<span class="hint">km ' + s.km.toFixed(1) + ' · 離路線 ' + s.off.toFixed(1) + ' km' +
+      (state.me ? ' · 沿路再 ' + Math.max(0, s.km - state.me.km).toFixed(1) + ' km' : '') + '</span>' +
+      (rules ? '<br>' + esc(rules) : '') +
+      '<br><a href="' + navLink(s) + '" target="_blank" rel="noopener">導航到車站</a></div>';
+    if (fly) state.map.flyTo({ center: [s.lon, s.lat], zoom: Math.max(state.map.getZoom(), 13), duration: 1000 });
+    new maplibregl.Popup({ offset: 16 }).setLngLat([s.lon, s.lat]).setHTML(html).addTo(state.map);
   }
 
   function refreshPois() {
@@ -645,6 +732,8 @@
         Math.max(1, Math.round(poiEta(usable.p.km) - poiEta(me.km))) + ' 分 ›'
       : '前方 ' + STRIP_KM + ' km 沒有營業中的休息點';
     var html = '<div class="strip-head" data-i="' + (usable ? usable.i : '') + '">' + head + '</div>';
+    var ns = nextStation(me.km);
+    if (ns) html += '<div class="strip-bail">撤退點：' + opLabel(ns) + stationName(ns) + '，沿路再 ' + (ns.km - me.km).toFixed(1) + ' km（離路線 ' + ns.off.toFixed(1) + ' km）</div>';
     if (!items.length) {
       html += '<div class="strip-empty">前方 ' + STRIP_KM + ' km 內沒有店家資料</div>';
       el.innerHTML = html; el.hidden = false; return;
@@ -680,6 +769,17 @@
       b.title = (x.p.name || brandName(x.p)) + ' · ' + (x.p.km - me.km).toFixed(1) + ' km';
       b.innerHTML = '<img alt="" src="' + badgeUrl(POI.iconKey(x.p, st.known && !st.open)) + '">';
       b.addEventListener('click', function () { openPoi(x.i, true); });
+      track.appendChild(b);
+    });
+    state.stations.forEach(function (s, i) {
+      if (s.km <= me.km + 0.05 || s.km > me.km + STRIP_KM) return;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'strip-station ' + s.op + (s.op === 'TRA' && s.bike !== 'yes' ? ' off' : '');
+      b.style.left = ((s.km - me.km) / STRIP_KM * W) + 'px';
+      b.textContent = opLabel(s);
+      b.title = stationName(s);
+      b.addEventListener('click', function () { openStation(i, true); });
       track.appendChild(b);
     });
     Object.keys(extra).forEach(function (k) {
@@ -820,12 +920,13 @@
     return fetch(url).then(function (r) { return r.ok ? r.json() : fallback; }).catch(function () { return fallback; });
   }
   Promise.all([fetch('data/route.json').then(function (r) { return r.json(); }), fetch('data/stops.json').then(function (r) { return r.json(); }),
-    optionalJson('data/pois.json', []), optionalJson('data/brands.json', {})])
+    optionalJson('data/pois.json', []), optionalJson('data/brands.json', {}), optionalJson('data/stations.json', [])])
     .then(function (res) {
       state.route = res[0];
       state.stops = res[1].sort(function (a, b) { return a.km - b.km; });
       state.pois = res[2].sort(function (a, b) { return a.km - b.km; });
       state.brands = res[3];
+      state.stations = res[4].sort(function (a, b) { return a.km - b.km; });
       computeSchedule();
       renderSchedule();
       renderLegend();

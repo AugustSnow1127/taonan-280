@@ -197,3 +197,11 @@ tr.official td:first-child { font-weight: 700; }
 .poi-pop .st-open { color: var(--easy); font-weight: 700; }
 .poi-pop .st-closed { color: var(--critical); font-weight: 700; }
 .poi-pop .st-unknown { color: var(--muted); }
+
+/* rail stations on the strip */
+.strip-station { position: absolute; bottom: 9px; transform: translateX(-50%); padding: 0 .3rem; border: 0; border-radius: 4px;
+  font-size: .62rem; font-weight: 700; color: #fff; line-height: 1.5; cursor: pointer; z-index: 1; }
+.strip-station.TRA { background: #1d4f9c; }
+.strip-station.THSR { background: #f26a21; }
+.strip-bail { font-size: .75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.strip-station.TRA.off { background: #9aa0a6; }
