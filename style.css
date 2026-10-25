@@ -205,3 +205,4 @@ tr.official td:first-child { font-weight: 700; }
 .strip-station.THSR { background: #f26a21; }
 .strip-bail { font-size: .75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .strip-station.TRA.off { background: #9aa0a6; }
+.lg-badge { width: 16px; height: 16px; display: inline-block; }

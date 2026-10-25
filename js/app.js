@@ -165,8 +165,8 @@
     return 12742 * Math.asin(Math.sqrt(a));
   }
   // Nearest station in a straight line from a point: { s, d (km) }.
-  // Without a bike bag only TRA stations on the official unbagged-bike list are real bail-out points.
-  function usableStations() { return state.stations.filter(function (s) { return s.bike === 'yes'; }); }
+  // Rider's plan: TRA only where an unbagged bike is allowed; THSR with the bike wrapped in garbage bags.
+  function usableStations() { return state.stations.filter(function (s) { return s.bike === 'yes' || s.op === 'THSR'; }); }
   function nearestStation(lon, lat) {
     var best = { s: null, d: 99 };
     usableStations().forEach(function (s) {
@@ -189,7 +189,7 @@
     yes: '✅ 開放兩鐵：整車上區間車，到窗口買半價自行車票（不能網路買）。',
     no: '❌ 不開放兩鐵：沒有攜車袋不能帶車上車。',
     unknown: '⚠️ 不確定是否開放兩鐵，當作不能整車上車。',
-    bag: '❌ 高鐵一定要拆輪、完整裝進攜車袋。垃圾袋可能被拒載。'
+    bag: '✅ 高鐵：拆前後輪，用綁帶綁好、垃圾袋包好上車（官方寫攜車袋，現場由站務判斷）。'
   };
   function stationIcon(s) { return s.op === 'THSR' ? 'st-THSR' : (s.bike === 'yes' ? 'st-TRA' : 'st-TRA-off'); }
   function stationName(s) { return s.name + (/站$/.test(s.name) ? '' : '站'); }
@@ -251,13 +251,17 @@
     if (state.colorMode === 'grade') {
       items = [['#2b83ba', '下坡'], ['#4dac26', '平路'], ['#fdae61', '+2%'], ['#d7191c', '+4% 以上']];
     } else if (state.colorMode === 'bail') {
-      items = [[BAIL.near, '3 km 內有可整車上車的台鐵站'], [BAIL.mid, '3–8 km'], [BAIL.far, '8 km 以上：這裡放棄最麻煩'], ['#1d4f9c', '台鐵（開放兩鐵）'], ['#9aa0a6', '台鐵（不能整車上車）'], ['#f26a21', '高鐵（需攜車袋）']];
+      items = [[BAIL.near, '路線：3 km 內有撤退車站'], [BAIL.mid, '路線：3–8 km'], [BAIL.far, '路線：8 km 以上，這裡放棄最麻煩'], ['', '台鐵：可整車上區間車', 'st-TRA'], ['', '台鐵：不能整車上車', 'st-TRA-off'], ['', '高鐵：拆輪包垃圾袋', 'st-THSR']];
     } else if (state.colorMode === 'segment') {
       items = segmentsFromStops().map(function (s, i) { return [C.segmentPalette[i % C.segmentPalette.length], (i + 1) + '. → ' + nameOf(s.b)]; });
     } else {
       items = [[C.easy, '輕鬆：不搶時間也不浪費'], [C.steady, '穩定 20 km/h：關門關鍵段'], [C.critical, '保體力：允許掉速'], [C.night, '夜騎（開燈）'], [C.stop, '停站']];
     }
-    el.innerHTML = items.map(function (it) { return '<div><i style="background:' + it[0] + '"></i>' + esc(it[1]) + '</div>'; }).join('');
+    if (state.me) items.push(['#9aa0a6', '灰色路線：已經騎過']);
+    el.innerHTML = items.map(function (it) {
+      var sw = it[2] ? '<img class="lg-badge" alt="" src="' + badgeUrl(it[2]) + '">' : '<i style="background:' + it[0] + '"></i>';
+      return '<div>' + sw + esc(it[1]) + '</div>';
+    }).join('');
   }
 
   function stopsGeoJSON() {
@@ -481,6 +485,7 @@
     state.me = { km: km, lonlat: lonlat, offM: offM, src: src || 'gps', at: at === undefined ? nowMinutes() : at };
     renderReport();
     refreshPois();
+    renderLegend();
     drawMe(fly);
   }
   function drawMe(fly) {
@@ -664,6 +669,7 @@
       });
       initStationLayer();
       state.poiReady = true;
+      renderLegend();
       renderStrip();
     });
   }
