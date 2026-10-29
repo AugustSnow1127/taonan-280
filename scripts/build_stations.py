@@ -26,6 +26,10 @@ BIKE_NO = {'內壢', '新富', '談文', '大山', '龍港', '新埔', '大村',
            '後壁', '柳營', '林鳳營', '拔林', '大橋'}
 
 
+# Not useful as bail-out points: north of the start, or mis-tagged (sugar-railway stop tagged with THSR operator).
+EXCLUDE = {'板橋', '五分車高鐵站'}
+
+
 def bike_rule(op, name):
     if op == 'THSR':
         return 'bag'          # wheels off, fully in a bike bag; no unbagged service
@@ -70,11 +74,12 @@ def main():
         tags = e.get('tags', {})
         op = operator(tags)
         name = tags.get('name')
-        if not op or not name:
+        if not op or not name or name in EXCLUDE:
             continue
         lon, lat = e.get('lon', e.get('center', {}).get('lon')), e.get('lat', e.get('center', {}).get('lat'))
         off, km = snap(route, lon, lat)
-        if off > MAX_OFF_KM or (op, name) in seen or (off > NEAR_KM and (op, name) not in MAJOR_FAR):
+        # Every THSR station within MAX_OFF_KM is kept (there are few); far TRA stations only if major.
+        if off > MAX_OFF_KM or (op, name) in seen or (off > NEAR_KM and op == 'TRA' and (op, name) not in MAJOR_FAR):
             continue
         seen.add((op, name))
         out.append({'id': '%s/%s' % (e['type'], e['id']), 'name': name, 'name_en': tags.get('name:en', ''), 'op': op,

@@ -88,6 +88,17 @@
   "bike": "no"
  },
  {
+  "id": "node/3933501989",
+  "name": "新竹",
+  "name_en": "Hsinchu",
+  "op": "THSR",
+  "lon": 121.040205,
+  "lat": 24.808296,
+  "km": 18.9,
+  "off": 10.42,
+  "bike": "bag"
+ },
+ {
   "id": "node/2016804222",
   "name": "北湖",
   "name_en": "Beihu",
@@ -416,6 +427,17 @@
   "km": 128.5,
   "off": 2.99,
   "bike": "yes"
+ },
+ {
+  "id": "node/3833813273",
+  "name": "台中",
+  "name_en": "Taichung",
+  "op": "THSR",
+  "lon": 120.615938,
+  "lat": 24.112099,
+  "km": 130.9,
+  "off": 13.87,
+  "bike": "bag"
  },
  {
   "id": "node/263012008",

@@ -2,6 +2,7 @@
   'use strict';
 
   var P = window.PLAN;
+  var DATA_V = '20';   // bump with ?v= in index.html when data/*.json changes
   var C = P.colors;
   var state = { route: null, stops: null, colorMode: 'strategy', schedule: null, map: null, mapReady: false, wind: null, me: null, watchId: null, wakeLock: null, reportText: '', headingUp: false, pois: [], brands: {}, poiReady: false, stations: [] };
 
@@ -777,17 +778,28 @@
       b.addEventListener('click', function () { openPoi(x.i, true); });
       track.appendChild(b);
     });
-    state.stations.forEach(function (s, i) {
-      if (s.km <= me.km + 0.05 || s.km > me.km + STRIP_KM) return;
+    // Station tags: THSR first so it is never hidden; tags closer than 30 px stack downwards.
+    var stLane = [];
+    state.stations.map(function (s, i) { return { s: s, i: i }; })
+      .filter(function (x) { return x.s.km > me.km + 0.05 && x.s.km <= me.km + STRIP_KM; })
+      .sort(function (a, b) { return (a.s.op === 'THSR' ? 0 : 1) - (b.s.op === 'THSR' ? 0 : 1) || a.s.km - b.s.km; })
+      .forEach(function (x) {
+      var s = x.s, i = x.i;
+      var px = (s.km - me.km) / STRIP_KM * W;
+      var lane = 0;
+      while (stLane[lane] && stLane[lane].some(function (q) { return Math.abs(q - px) < 30; })) lane++;
+      (stLane[lane] = stLane[lane] || []).push(px);
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'strip-station ' + s.op + (s.op === 'TRA' && s.bike !== 'yes' ? ' off' : '');
-      b.style.left = ((s.km - me.km) / STRIP_KM * W) + 'px';
+      b.style.left = px + 'px';
+      b.style.bottom = (9 - lane * 15) + 'px';
       b.textContent = opLabel(s);
       b.title = stationName(s);
       b.addEventListener('click', function () { openStation(i, true); });
       track.appendChild(b);
     });
+    track.style.marginBottom = (Math.max(0, stLane.length - 1) * 15) + 'px';   // room for stacked station tags
     Object.keys(extra).forEach(function (k) {
       var d = document.createElement('div');
       d.className = 'strip-more';
@@ -925,8 +937,8 @@
   function optionalJson(url, fallback) {
     return fetch(url).then(function (r) { return r.ok ? r.json() : fallback; }).catch(function () { return fallback; });
   }
-  Promise.all([fetch('data/route.json').then(function (r) { return r.json(); }), fetch('data/stops.json').then(function (r) { return r.json(); }),
-    optionalJson('data/pois.json', []), optionalJson('data/brands.json', {}), optionalJson('data/stations.json', [])])
+  Promise.all([fetch('data/route.json?v=' + DATA_V).then(function (r) { return r.json(); }), fetch('data/stops.json?v=' + DATA_V).then(function (r) { return r.json(); }),
+    optionalJson('data/pois.json?v=' + DATA_V, []), optionalJson('data/brands.json?v=' + DATA_V, {}), optionalJson('data/stations.json?v=' + DATA_V, [])])
     .then(function (res) {
       state.route = res[0];
       state.stops = res[1].sort(function (a, b) { return a.km - b.km; });
